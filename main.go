@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Material struct {
@@ -35,9 +40,22 @@ type NewCraft struct {
 	MaterialIds []uint `json:"materialIds" binding:"required"`
 }
 
+type MLResponse struct {
+	Labels []string `json:"objects" binding:"required"`
+}
+
+type CraftJson struct {
+	Id          uint   `json:"ID"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ImageURL    string `json:"imageUrl"`
+}
+
 func main() {
 	dsn := "host=localhost user=postgres password=root dbname=capstone port=5432 sslmode=disable TimeZone=Asia/Bangkok"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 
 	if err != nil {
 		fmt.Println("database connection error")
@@ -103,6 +121,64 @@ func main() {
 		}
 
 		c.Status(http.StatusOK)
+	})
+
+	r.POST("/vision", func(c *gin.Context) {
+		img, err := c.FormFile("photo")
+		if err != nil {
+			fmt.Println(err)
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		imgBytes, _ := img.Open()
+		defer imgBytes.Close()
+		reqBody := &bytes.Buffer{}
+		writer := multipart.NewWriter(reqBody)
+		writer.WriteField("threshold", "0.4")
+		part, _ := writer.CreateFormFile("img", img.Filename)
+		io.Copy(part, imgBytes)
+		writer.Close()
+
+		r, _ := http.NewRequest("POST", "http://localhost:8081", reqBody)
+		r.Header.Add("Content-Type", writer.FormDataContentType())
+		client := &http.Client{}
+
+		resp, err := client.Do(r)
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		defer resp.Body.Close()
+
+		var jsonBody MLResponse
+		json.NewDecoder(resp.Body).Decode(&jsonBody)
+
+		fmt.Println(jsonBody)
+
+		var queriedCrafts []Craft
+
+		db.Model(&Craft{}).Select("crafts.*").
+			Joins("JOIN crafts_materials ON crafts.id = crafts_materials.craft_id").
+			Joins("JOIN materials ON crafts_materials.material_id = materials.id").
+			Where("materials.ml_label IN ?", jsonBody.Labels).
+			Group("crafts.id").
+			Having("COUNT(*) = ?", len(jsonBody.Labels)).
+			Find(&queriedCrafts)
+
+		var responseCrafts []CraftJson
+
+		for _, v := range queriedCrafts {
+			responseCrafts = append(responseCrafts, CraftJson{
+				Name:        v.Name,
+				Description: v.Description,
+				Id:          v.ID,
+				ImageURL:    v.ImageURL,
+			})
+		}
+
+		c.JSON(http.StatusOK, responseCrafts)
 	})
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
