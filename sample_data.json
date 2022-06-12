@@ -1,0 +1,45 @@
+{
+
+    "crafts": [
+  
+      {
+  
+        "ID": 1,
+  
+        "imageUrl": "https://www.99.co/blog/indonesia/wp-content/uploads/2019/04/daur-ulang-plastik-5.jpg",
+  
+        "name": "Tempat Sampah",
+  
+        "description": "lorem ipsum lorem ipsum lorem ipsum"
+  
+      },
+  
+      {
+  
+        "ID": 2,
+  
+        "imageUrl": "https://www.99.co/blog/indonesia/wp-content/uploads/2019/04/daur-ulang-plastik-5.jpg",
+  
+        "name": "Tempat Pensil",
+  
+        "description": "lorem ipsum lorem ipsum lorem ipsum"
+  
+      },
+  
+      {
+  
+        "ID": 3,
+  
+        "imageUrl": "https://www.99.co/blog/indonesia/wp-content/uploads/2019/04/daur-ulang-plastik-5.jpg",
+  
+        "name": "Pot Bunga",
+  
+        "description": "lorem ipsum lorem ipsum lorem ipsum"
+  
+      }
+  
+    ]
+  
+  }
+  
+  
