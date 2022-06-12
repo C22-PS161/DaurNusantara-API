@@ -53,6 +53,10 @@ type CraftJson struct {
 }
 
 func main() {
+	visionAPI, found := os.LookupEnv("VISION_URL")
+	if !found {
+		visionAPI = "http://localhost:8081"
+	}
 	dsn, found := os.LookupEnv("DB_URI")
 	if !found {
 		dsn = "host=localhost user=postgres password=root dbname=capstone port=5432 sslmode=disable TimeZone=Asia/Bangkok"
@@ -144,7 +148,7 @@ func main() {
 		io.Copy(part, imgBytes)
 		writer.Close()
 
-		r, _ := http.NewRequest("POST", "http://localhost:8081", reqBody)
+		r, _ := http.NewRequest("POST", visionAPI, reqBody)
 		r.Header.Add("Content-Type", writer.FormDataContentType())
 		client := &http.Client{}
 
