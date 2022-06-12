@@ -66,24 +66,44 @@ func main() {
 
 	})
 
-	// r.POST("/crafts", func(c *gin.Context) {
-	// 	var jsonBody NewCraft
+	r.POST("/crafts", func(c *gin.Context) {
+		var jsonBody NewCraft
 
-	// 	if err := c.BindJSON(&jsonBody); err != nil {
-	// 		fmt.Println(err)
-	// 		return
-	// 	}
-	// 	fmt.Println(jsonBody)
-	// 	toCreate := Craft{
-	// 		Name:        jsonBody.Name,
-	// 		Description: jsonBody.Description,
-	// 		ImageURL:    jsonBody.ImageURL,
-	// 	}
+		if err := c.BindJSON(&jsonBody); err != nil {
+			fmt.Println(err)
+			return
+		}
 
-	// 	fmt.Println(toCreate)
+		toCreate := Craft{
+			Name:        jsonBody.Name,
+			Description: jsonBody.Description,
+			ImageURL:    jsonBody.ImageURL,
+		}
 
-	// 	c.Status(http.StatusOK)
-	// })
+		if result := db.Create(&toCreate); result.Error != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		var neededMaterials []Material
+
+		result := db.Where("id IN ?", jsonBody.MaterialIds).Find(&neededMaterials)
+
+		if result.Error != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		err := db.Model(&toCreate).Association("Materials").Append(neededMaterials)
+		if err != nil {
+			fmt.Println("DB error")
+			fmt.Println(err)
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	})
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
